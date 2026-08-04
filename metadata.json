@@ -1,0 +1,6 @@
+{
+  "name": "Audio Text Player",
+  "description": "An interactive web app for listening to audio while reading synchronized text and transcripts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

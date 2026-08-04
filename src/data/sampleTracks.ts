@@ -1,0 +1,230 @@
+import { Track } from '../types';
+
+export const SAMPLE_TRACKS: Track[] = [
+  {
+    id: 'sample-hetang',
+    title: '荷塘月色',
+    author: '朱自清',
+    category: '经典散文',
+    description: '朱自清先生的抒情散文名篇。描绘月夜下荷塘的优雅景色，意境幽远，语言沉静优美。',
+    coverImage: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=800&auto=format&fit=crop',
+    audioUrl: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3',
+    duration: 180,
+    createdAt: Date.now() - 100000,
+    segments: [
+      {
+        id: 'ht-1',
+        startTime: 0,
+        endTime: 12,
+        text: '这几天心里颇不宁静。今晚在院子里坐着乘凉，忽然想起日日走过的荷塘，在这满月的月光下，总该另有一番样子吧。',
+        speaker: '朗读',
+      },
+      {
+        id: 'ht-2',
+        startTime: 12,
+        endTime: 28,
+        text: '月亮渐渐地升高了，墙外马路上孩子们的欢笑，已经听不见了；妻在屋里哼着眠歌，迷迷糊糊地拍着润儿。我悄悄地披了大衫，带上门出去。',
+        speaker: '朗读',
+      },
+      {
+        id: 'ht-3',
+        startTime: 28,
+        endTime: 48,
+        text: '小路沿着荷塘，是一条曲折的煤屑路。这是一条幽僻的路；白天也少人走，夜晚更加寂寞。荷塘四周，长着许多树，蓊蓊郁郁的。弯弯的杨柳上，陆陆续续地是些光彩。',
+        speaker: '朗读',
+      },
+      {
+        id: 'ht-4',
+        startTime: 48,
+        endTime: 70,
+        text: '曲曲折折的荷塘上面，弥望的是田田的叶子。叶子出水很高，像亭亭的舞女的裙。层层的叶子中间，零星地点缀着些白花，有袅娜地开着的，有羞涩地打着朵儿的；正如一粒粒的明珠，又如碧天里的星星，又如刚出浴的美人。',
+        speaker: '朗读',
+      },
+      {
+        id: 'ht-5',
+        startTime: 70,
+        endTime: 95,
+        text: '微风过处，送来缕缕清香，仿佛远处高楼上渺茫的歌声似的。这时候叶子与花也有一丝的颤动，像闪电般，霎时传过荷塘的那边去了。叶子本是肩并肩密密地挨着，这便宛然有了一道凝碧的波痕。',
+        speaker: '朗读',
+      },
+      {
+        id: 'ht-6',
+        startTime: 95,
+        endTime: 120,
+        text: '月光如流水一般，静静地泻在这一片叶子和花上。薄薄的青雾浮起在荷塘里。叶子和花仿佛在牛乳中洗过一样；又像笼着轻纱的梦。',
+        speaker: '朗读',
+      },
+      {
+        id: 'ht-7',
+        startTime: 120,
+        endTime: 150,
+        text: '虽然是满月，天上却有一层淡淡的云，所以不能朗照；但我以为这恰是到了好处——酣眠固不可少，小睡也是别有风味的。月光是隔了树照过来的，高处丛生的灌木，落下参差的斑驳的黑影，峭楞楞如鬼一般；弯弯的杨柳的稀疏的倩影，却又像是画在荷叶上。',
+        speaker: '朗读',
+      },
+      {
+        id: 'ht-8',
+        startTime: 150,
+        endTime: 180,
+        text: '荷塘的四面，远远近近，高高低低都是树，而杨柳最多。这些树将一片荷塘重重围住；只在小路一旁，漏着几段空隙，像是特为月光留下的。树色一例是阴阴的，乍看像一团烟雾；但杨柳的丰姿，便在烟雾里也辨得出。树梢上隐隐约约的是一带远山，只有些大意罢了。',
+        speaker: '朗读',
+      }
+    ]
+  },
+  {
+    id: 'sample-jobs',
+    title: 'Stay Hungry, Stay Foolish',
+    author: 'Steve Jobs',
+    category: '英语演讲',
+    description: '史蒂夫·乔布斯在斯坦福大学毕业典礼上的经典演讲，分享关于连接生命点滴、热爱与求知的心得。',
+    coverImage: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?q=80&w=800&auto=format&fit=crop',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    duration: 160,
+    createdAt: Date.now() - 200000,
+    segments: [
+      {
+        id: 'sj-1',
+        startTime: 0,
+        endTime: 15,
+        text: 'I am honored to be with you today at your commencement from one of the finest universities in the world.',
+        translation: '今天能参加各位来自世界上最优秀大学之一的毕业典礼，我感到非常荣幸。',
+        speaker: 'Steve Jobs',
+      },
+      {
+        id: 'sj-2',
+        startTime: 15,
+        endTime: 35,
+        text: 'I never graduated from college. Truth be told, this is the closest I’ve ever gotten to a college graduation. Today I want to tell you three stories from my life. That’s it. No big deal. Just three stories.',
+        translation: '我从来没有大学毕业。说实话，这是我离大学毕业最近的一次。今天我想跟大家分享我生活中的三个故事。仅此而已，没什么大不了的，只有三个故事。',
+        speaker: 'Steve Jobs',
+      },
+      {
+        id: 'sj-3',
+        startTime: 35,
+        endTime: 60,
+        text: 'The first story is about connecting the dots. I dropped out of Reed College after the first 6 months, but then stayed around as a drop-in for another 18 months or so before I really quit. So why did I drop out?',
+        translation: '第一个故事是关于把生命中的点滴串联起来。我在里德学院读了6个月后就退学了，但又作为旁听生留了大约18个月才真正离开。那我为什么要退学呢？',
+        speaker: 'Steve Jobs',
+      },
+      {
+        id: 'sj-4',
+        startTime: 60,
+        endTime: 90,
+        text: 'You can’t connect the dots looking forward; you can only connect them looking backward. So you have to trust that the dots will somehow connect in your future. You have to trust in something — your gut, destiny, life, karma, whatever.',
+        translation: '你无法预先将人生的点滴串联起来，只有在回头看时才能明白它们之间的联系。所以你必须相信，这些点滴在未来会以某种方式连接在一起。你必须相信一些东西——勇气、命运、生命、因果，随你怎么说。',
+        speaker: 'Steve Jobs',
+      },
+      {
+        id: 'sj-5',
+        startTime: 90,
+        endTime: 125,
+        text: 'My second story is about love and loss. I was lucky — I found what I loved to do early in life. Woz and I started Apple in my parents garage when I was 20. We worked hard, and in 10 years Apple had grown into a $2 billion company.',
+        translation: '我的第二个故事是关于热爱与失去。我很幸运，在很年轻时就找到了挚爱的事业。20岁时，我和沃兹在我父母的车库里创立了苹果公司。我们勤奋工作，10年间苹果发展成了一家价值20亿美元的公司。',
+        speaker: 'Steve Jobs',
+      },
+      {
+        id: 'sj-6',
+        startTime: 125,
+        endTime: 160,
+        text: 'Your time is limited, so don’t waste it living someone else’s life. Don’t be trapped by dogma — which is living with the results of other people’s thinking. Stay Hungry. Stay Foolish.',
+        translation: '你们的时间有限，所以不要浪费时间去过别人的生活。不要被教条所限——那等于活在别人的思考结果里。求知若饥，虚心若愚。',
+        speaker: 'Steve Jobs',
+      }
+    ]
+  },
+  {
+    id: 'sample-cosmos',
+    title: '探索深空：宇宙与我们的关联',
+    author: '星际科普台',
+    category: '知识科普',
+    description: '漫步百亿光年外的星系，了解恒星演化、黑洞引力与人类DNA中来自星尘的印记。',
+    coverImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop',
+    audioUrl: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a879d2.mp3',
+    duration: 140,
+    createdAt: Date.now() - 300000,
+    segments: [
+      {
+        id: 'cos-1',
+        startTime: 0,
+        endTime: 20,
+        text: '欢迎来到深空之声。当我们仰望夜空，看到的不仅仅是遥远的闪烁光斑，更是百亿年前宇宙诞生的历史微粒。',
+        speaker: '科普解说',
+      },
+      {
+        id: 'cos-2',
+        startTime: 20,
+        endTime: 45,
+        text: '现代天文学告诉我们，构成我们身体的每一个碳原子、每一滴血液里的铁元素，都曾在一颗超新星爆发的剧烈熔炉中孕育。',
+        speaker: '科普解说',
+      },
+      {
+        id: 'cos-3',
+        startTime: 45,
+        endTime: 75,
+        text: '正如著名天文学家卡尔·萨根所言：“我们是宇宙认识其自身的一种方式。” 我们不仅生活在宇宙中，宇宙也深深植根于我们之中。',
+        speaker: '科普解说',
+      },
+      {
+        id: 'cos-4',
+        startTime: 75,
+        endTime: 110,
+        text: '在可观测宇宙的广袤空间里，估计包含着超过两万亿个星系。每一个星系都有数千亿颗恒星，而每一颗恒星周围，都可能运转着未知的行星世界。',
+        speaker: '科普解说',
+      },
+      {
+        id: 'cos-5',
+        startTime: 110,
+        endTime: 140,
+        text: '保持好奇，继续探索。因为在这片浩瀚汪洋中，寻找答案的过程，本身就是人类最伟大的史诗。',
+        speaker: '科普解说',
+      }
+    ]
+  },
+  {
+    id: 'sample-night',
+    title: '给岁月以文明，给时间以生命',
+    author: '深度夜读',
+    category: '故事电台',
+    description: '沉静夜读，在文字与声音交织的温柔角落里，寻找心灵的踏实与从容。',
+    coverImage: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=800&auto=format&fit=crop',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+    duration: 150,
+    createdAt: Date.now() - 400000,
+    segments: [
+      {
+        id: 'nr-1',
+        startTime: 0,
+        endTime: 25,
+        text: '夜晚好，欢迎收听今晚的文字陪伴。在这个快节奏的世界里，愿我们能有一小段安宁的时间，安静地听一听声音，读一读文字。',
+        speaker: '夜读主播',
+      },
+      {
+        id: 'nr-2',
+        startTime: 25,
+        endTime: 55,
+        text: '有人曾说，生命的质量不在于活了多少天，而在于有多少日子被真正记住。正如那句名言：“给岁月以文明，而不是给文明以岁月；给时间以生命，而不是给生命以时间。”',
+        speaker: '夜读主播',
+      },
+      {
+        id: 'nr-3',
+        startTime: 55,
+        endTime: 90,
+        text: '当你翻开一本书，或戴上耳机听一段故事，喧嚣便被隔绝在窗外。文字与声音构筑了一个安全而宽广的世界，让你可以在其中自由呼吸、思考与休憩。',
+        speaker: '夜读主播',
+      },
+      {
+        id: 'nr-4',
+        startTime: 90,
+        endTime: 125,
+        text: '愿你在今晚找到一份属于自己的坦然。无论白天遇到了怎样的疲惫与波折，此刻，都可以轻轻卸下，安然入睡。',
+        speaker: '夜读主播',
+      },
+      {
+        id: 'nr-5',
+        startTime: 125,
+        endTime: 150,
+        text: '感谢您的聆听，祝您好梦，晚安。',
+        speaker: '夜读主播',
+      }
+    ]
+  }
+];
