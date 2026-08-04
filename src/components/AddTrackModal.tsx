@@ -10,9 +10,12 @@ import {
   HelpCircle,
   FolderPlus,
   CheckCircle2,
+  Loader2,
+  FileCheck,
 } from 'lucide-react';
 import { Track } from '../types';
 import { parseTextToSegments } from '../utils/lrcParser';
+import { extractTextFromPdf } from '../utils/pdfParser';
 
 interface AddTrackModalProps {
   isOpen: boolean;
@@ -39,6 +42,7 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
 
   // Text source state
   const [rawTextInput, setRawTextInput] = useState('');
+  const [isParsingPdf, setIsParsingPdf] = useState(false);
   const [estimatedDuration, setEstimatedDuration] = useState<number>(120);
 
   const [activeTab, setActiveTab] = useState<'create' | 'json'>('create');
@@ -69,17 +73,41 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
     }
   };
 
-  // Handle local text file selection (.txt, .lrc, .srt)
-  const handleTextFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle local text file selection (.txt, .lrc, .srt, .pdf)
+  const handleTextFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setRawTextInput(event.target.result as string);
+      setErrorMsg('');
+
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        setIsParsingPdf(true);
+        try {
+          const pdfText = await extractTextFromPdf(file);
+          if (!pdfText.trim()) {
+            setErrorMsg('PDF 解析成功但未提取到纯文本，该文件可能是单纯扫描版图片 PDF');
+          } else {
+            setRawTextInput(pdfText);
+            if (!title) {
+              setTitle(file.name.replace(/\.pdf$/i, ''));
+            }
+          }
+        } catch (err: any) {
+          setErrorMsg(err?.message || '解析 PDF 失败');
+        } finally {
+          setIsParsingPdf(false);
         }
-      };
-      reader.readAsText(file);
+      } else {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            setRawTextInput(event.target.result as string);
+            if (!title) {
+              setTitle(file.name.replace(/\.[^/.]+$/, ''));
+            }
+          }
+        };
+        reader.readAsText(file);
+      }
     }
   };
 
@@ -337,16 +365,26 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
                 <div className="flex items-center justify-between">
                   <label className="block font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                     <FileText className="w-4 h-4 text-blue-500" />
-                    文稿内容 (文本 / LRC歌词 / SRT字幕) *
+                    文稿内容 (文本 / PDF文档 / LRC歌词 / SRT字幕) *
                   </label>
-                  <label className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
-                    上传 .txt / .lrc / .srt 文件
-                    <input
-                      type="file"
-                      accept=".txt,.lrc,.srt,.vtt,.md"
-                      onChange={handleTextFileChange}
-                      className="hidden"
-                    />
+                  <label className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1">
+                    {isParsingPdf ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                        <span>正在解析 PDF 文本...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>导入 PDF / TXT / LRC / SRT</span>
+                        <input
+                          type="file"
+                          accept=".pdf,.txt,.lrc,.srt,.vtt,.md"
+                          onChange={handleTextFileChange}
+                          disabled={isParsingPdf}
+                          className="hidden"
+                        />
+                      </>
+                    )}
                   </label>
                 </div>
 
