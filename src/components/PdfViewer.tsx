@@ -79,7 +79,20 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
 
     const loadPdf = async () => {
       try {
-        const loadingTask = pdfjsLib.getDocument(pdfUrl);
+        let loadingTask;
+        if (pdfUrl.startsWith('data:')) {
+          // Convert Data URL to Uint8Array for direct worker byte stream parsing
+          const base64Str = pdfUrl.split(',')[1] || pdfUrl;
+          const binaryStr = atob(base64Str);
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+          }
+          loadingTask = pdfjsLib.getDocument({ data: bytes });
+        } else {
+          loadingTask = pdfjsLib.getDocument({ url: pdfUrl });
+        }
+
         const doc = await loadingTask.promise;
         if (isCancelled) return;
         pdfDocRef.current = doc;
