@@ -64,6 +64,7 @@ export default function App() {
       showTimestamps: true,
       showTranslation: true,
       layout: 'split',
+      viewMode: 'pdf',
     };
   });
 

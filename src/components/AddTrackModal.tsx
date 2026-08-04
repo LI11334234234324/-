@@ -13,9 +13,9 @@ import {
   Loader2,
   FileCheck,
 } from 'lucide-react';
-import { Track } from '../types';
+import { Track, ParagraphSegment } from '../types';
 import { parseTextToSegments } from '../utils/lrcParser';
-import { extractTextFromPdf } from '../utils/pdfParser';
+import { parsePdfFile } from '../utils/pdfParser';
 
 interface AddTrackModalProps {
   isOpen: boolean;
@@ -45,6 +45,11 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
   const [isParsingPdf, setIsParsingPdf] = useState(false);
   const [estimatedDuration, setEstimatedDuration] = useState<number>(120);
 
+  // PDF preserved state
+  const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | undefined>(undefined);
+  const [uploadedPdfPageCount, setUploadedPdfPageCount] = useState<number | undefined>(undefined);
+  const [uploadedPdfSegments, setUploadedPdfSegments] = useState<Omit<ParagraphSegment, 'id' | 'startTime'>[]>([]);
+
   const [activeTab, setActiveTab] = useState<'create' | 'json'>('create');
   const [jsonInput, setJsonInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -57,12 +62,10 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
       const file = e.target.files[0];
       setSelectedAudioFile(file);
       if (!title) {
-        // Auto set title from file name
         const cleanName = file.name.replace(/\.[^/.]+$/, '');
         setTitle(cleanName);
       }
 
-      // Try to get audio duration
       const audioObj = new Audio();
       audioObj.src = URL.createObjectURL(file);
       audioObj.onloadedmetadata = () => {
@@ -73,7 +76,7 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
     }
   };
 
-  // Handle local text file selection (.txt, .lrc, .srt, .pdf)
+  // Handle local text or PDF file selection
   const handleTextFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -82,11 +85,14 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
         setIsParsingPdf(true);
         try {
-          const pdfText = await extractTextFromPdf(file);
-          if (!pdfText.trim()) {
+          const res = await parsePdfFile(file);
+          if (!res.extractedText.trim()) {
             setErrorMsg('PDF 解析成功但未提取到纯文本，该文件可能是单纯扫描版图片 PDF');
           } else {
-            setRawTextInput(pdfText);
+            setUploadedPdfUrl(res.pdfUrl);
+            setUploadedPdfPageCount(res.pageCount);
+            setUploadedPdfSegments(res.segments);
+            setRawTextInput(res.extractedText);
             if (!title) {
               setTitle(file.name.replace(/\.pdf$/i, ''));
             }
@@ -97,6 +103,11 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
           setIsParsingPdf(false);
         }
       } else {
+        // Reset PDF state for plain text files
+        setUploadedPdfUrl(undefined);
+        setUploadedPdfPageCount(undefined);
+        setUploadedPdfSegments([]);
+
         const reader = new FileReader();
         reader.onload = (event) => {
           if (event.target?.result) {
@@ -149,11 +160,22 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
     }
 
     // Parse segments from text input
-    const segments = parseTextToSegments(rawTextInput, estimatedDuration);
+    let segments = parseTextToSegments(rawTextInput, estimatedDuration);
 
     if (segments.length === 0) {
       setErrorMsg('未能从文稿中解析出段落内容，请检查文本格式');
       return;
+    }
+
+    // Attach PDF page metadata if available
+    if (uploadedPdfSegments.length > 0) {
+      segments = segments.map((seg, idx) => {
+        const matched = uploadedPdfSegments[idx] || uploadedPdfSegments[Math.min(idx, uploadedPdfSegments.length - 1)];
+        return {
+          ...seg,
+          pdfPage: matched ? matched.pdfPage : 1,
+        };
+      });
     }
 
     const newTrack: Track = {
@@ -161,7 +183,7 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
       title: title.trim(),
       author: author.trim() || '自定义作者',
       category,
-      description: description.trim() || '用户自定义音频文本内容',
+      description: description.trim() || (uploadedPdfUrl ? '导入的 PDF 完整原貌排版音频项目' : '用户自定义音频文本内容'),
       audioUrl,
       isBlobUrl,
       isTTS,
@@ -169,6 +191,8 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
       segments,
       createdAt: Date.now(),
       coverImage: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800&auto=format&fit=crop',
+      pdfUrl: uploadedPdfUrl,
+      pdfPageCount: uploadedPdfPageCount,
     };
 
     onAddTrack(newTrack);
@@ -193,7 +217,7 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <FolderPlus className="w-5 h-5 text-blue-600" />
-            <h3 className="text-lg font-bold">添加新音频与文本</h3>
+            <h3 className="text-lg font-bold">添加新音频与文本 / PDF 原貌</h3>
           </div>
           <button
             onClick={onClose}
@@ -240,106 +264,129 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
               {/* Basic Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold mb-1">作品标题 *</label>
+                  <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                    标题名称 *
+                  </label>
                   <input
                     type="text"
-                    required
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="例：《荷塘月色》或 BBC 听力第11期"
-                    className="w-full p-2.5 rounded-xl border bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="例如：荷塘月色 / 英语演讲 / 商业讲座"
+                    className="w-full p-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
                   />
                 </div>
+
                 <div>
-                  <label className="block font-semibold mb-1">作者 / 主讲人</label>
+                  <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                    作者 / 讲者
+                  </label>
                   <input
                     type="text"
                     value={author}
                     onChange={(e) => setAuthor(e.target.value)}
-                    placeholder="例：朱自清 / Steve Jobs"
-                    className="w-full p-2.5 rounded-xl border bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="例如：朱自清 / Steve Jobs"
+                    className="w-full p-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block font-semibold mb-1">分类标签</label>
-                <div className="flex flex-wrap gap-2">
-                  {['文学散文', '英语演讲', '知识科普', '故事电台', '个人笔记', '自定义'].map((cat) => (
-                    <button
-                      type="button"
-                      key={cat}
-                      onClick={() => setCategory(cat)}
-                      className={`px-3 py-1.5 rounded-lg border text-xs transition-all ${
-                        category === cat
-                          ? 'bg-blue-600 text-white font-bold border-blue-600'
-                          : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                    分类标签
+                  </label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full p-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="经典散文">经典散文</option>
+                    <option value="英语演讲">英语演讲</option>
+                    <option value="知识科普">知识科普</option>
+                    <option value="故事电台">故事电台</option>
+                    <option value="学术论文">学术论文</option>
+                    <option value="PDF文档">PDF文档</option>
+                    <option value="自定义">自定义</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1 text-slate-700 dark:text-slate-300">
+                    预计时长 (秒)
+                  </label>
+                  <input
+                    type="number"
+                    value={estimatedDuration}
+                    onChange={(e) => setEstimatedDuration(Number(e.target.value))}
+                    placeholder="默认120秒"
+                    className="w-full p-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
               </div>
 
-              {/* Step 1: Audio Source Selection */}
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-3">
+              {/* Audio Source Selector */}
+              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
                 <label className="block font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <Music className="w-4 h-4 text-blue-500" />
-                  音频来源设置
+                  音频来源 *
                 </label>
 
-                <div className="flex gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => setAudioType('file')}
-                    className={`flex-1 py-2 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
+                    className={`p-2.5 rounded-xl border text-center transition-all ${
                       audioType === 'file'
-                        ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-600 font-bold'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+                        ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-600 dark:text-blue-400 font-bold'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
-                    <Upload className="w-3.5 h-3.5" /> 本地 MP3 文件
+                    本地音频文件
                   </button>
-
                   <button
                     type="button"
                     onClick={() => setAudioType('url')}
-                    className={`flex-1 py-2 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
+                    className={`p-2.5 rounded-xl border text-center transition-all ${
                       audioType === 'url'
-                        ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-600 font-bold'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+                        ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-600 dark:text-blue-400 font-bold'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
-                    <Link className="w-3.5 h-3.5" /> 音频 URL 链接
+                    网络音频 URL
                   </button>
-
                   <button
                     type="button"
                     onClick={() => setAudioType('tts')}
-                    className={`flex-1 py-2 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
+                    className={`p-2.5 rounded-xl border text-center transition-all ${
                       audioType === 'tts'
-                        ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-600 font-bold'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+                        ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-600 dark:text-blue-400 font-bold'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" /> 语音合成 (TTS)
+                    AI 语音合成朗读
                   </button>
                 </div>
 
                 {audioType === 'file' && (
-                  <div className="space-y-1">
+                  <div className="p-3 border border-dashed rounded-xl bg-slate-50 dark:bg-slate-800/50 text-center">
                     <input
                       type="file"
-                      accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac"
+                      accept="audio/*"
                       onChange={handleAudioFileChange}
-                      className="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+                      className="hidden"
+                      id="audio-file-upload"
                     />
-                    {selectedAudioFile && (
-                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> 已选择: {selectedAudioFile.name} ({(selectedAudioFile.size / 1024 / 1024).toFixed(2)} MB)
-                      </p>
-                    )}
+                    <label
+                      htmlFor="audio-file-upload"
+                      className="cursor-pointer flex flex-col items-center gap-1.5"
+                    >
+                      <Upload className="w-6 h-6 text-blue-500" />
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        {selectedAudioFile ? selectedAudioFile.name : '点击选择本地 MP3/WAV/M4A 音频文件'}
+                      </span>
+                      <span className="text-[10px] text-slate-400">支持拖拽或直接点击选择</span>
+                    </label>
                   </div>
                 )}
 
@@ -348,34 +395,34 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
                     type="url"
                     value={audioUrlInput}
                     onChange={(e) => setAudioUrlInput(e.target.value)}
-                    placeholder="https://example.com/audio.mp3"
-                    className="w-full p-2.5 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="例如：https://example.com/audio.mp3"
+                    className="w-full p-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 )}
 
                 {audioType === 'tts' && (
-                  <p className="text-[11px] opacity-75">
-                    无音频文件时，系统将使用浏览器原生 TTS 引擎根据文字内容自动朗读语音！
+                  <p className="text-[11px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 p-2 rounded-lg">
+                    ✨ 已选择 AI 语音合成模式。系统将使用浏览器的 Web Speech 引擎自动根据文稿段落朗读！
                   </p>
                 )}
               </div>
 
-              {/* Step 2: Text / Transcript Input */}
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-3">
+              {/* Text / PDF Source Upload */}
+              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
                 <div className="flex items-center justify-between">
                   <label className="block font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                     <FileText className="w-4 h-4 text-blue-500" />
-                    文稿内容 (文本 / PDF文档 / LRC歌词 / SRT字幕) *
+                    文稿内容 (文本 / 原版 PDF 文档 / LRC歌词 / SRT字幕) *
                   </label>
                   <label className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1">
                     {isParsingPdf ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
-                        <span>正在解析 PDF 文本...</span>
+                        <span>正在解析 PDF 原件与排版...</span>
                       </>
                     ) : (
                       <>
-                        <span>导入 PDF / TXT / LRC / SRT</span>
+                        <span>直接导入 PDF / TXT / LRC / SRT</span>
                         <input
                           type="file"
                           accept=".pdf,.txt,.lrc,.srt,.vtt,.md"
@@ -388,66 +435,72 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
                   </label>
                 </div>
 
+                {uploadedPdfUrl && (
+                  <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-[11px] flex items-center gap-2">
+                    <FileCheck className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <span>
+                      已导入 PDF 原版文件 (共 {uploadedPdfPageCount} 页)，系统将直接保留其原生美观排版与图像，并支持逐句高亮同步跟读！
+                    </span>
+                  </div>
+                )}
+
                 <textarea
-                  required
                   value={rawTextInput}
                   onChange={(e) => setRawTextInput(e.target.value)}
-                  placeholder={`粘贴文本内容，支持：
-1. 普通文字段落（空行分隔段落）
-2. LRC 时间戳格式（如 [00:15.20] 第一句内容）
-3. SRT 字幕格式或【角色/朗读】：标记`}
+                  placeholder="在此直接粘贴纯文本/LRC歌词/SRT字幕，或者点击右上角上传 PDF/TXT 文件..."
                   rows={6}
-                  className="w-full p-3 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs leading-relaxed"
+                  className="w-full p-3 border rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed text-xs"
+                  required
                 />
-
-                <div className="flex items-center justify-between text-[11px] text-slate-500">
-                  <span>支持自动智能切分段落与解析说话人角色</span>
-                  <span>已输入 {rawTextInput.length} 个字符</span>
-                </div>
               </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-end gap-2 pt-2">
+              {/* Submit Buttons */}
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium"
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium"
                 >
                   取消
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-md transition-transform active:scale-95"
+                  disabled={isParsingPdf}
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20 disabled:opacity-50"
                 >
-                  创建并存入库
+                  <Plus className="w-4 h-4" />
+                  <span>添加至项目库</span>
                 </button>
               </div>
             </form>
           ) : (
-            /* JSON Import tab */
+            /* JSON Import Tab */
             <div className="space-y-4 text-xs">
               <p className="text-slate-600 dark:text-slate-400">
-                在此粘贴先前导出的音频文稿 JSON 数据代码包，一键恢复导入全套文本、时间戳与标签。
+                请将由本应用或其他工具导出的 Track 项目 JSON 字符串粘贴至下方框中：
               </p>
               <textarea
                 value={jsonInput}
                 onChange={(e) => setJsonInput(e.target.value)}
-                placeholder='粘贴 {"id": "...", "title": "...", "segments": [...]} JSON 代码'
+                placeholder='{"id": "...", "title": "...", "segments": [...]}'
                 rows={10}
-                className="w-full p-3 rounded-xl border bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                className="w-full p-3 border rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
               />
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-2">
                 <button
+                  type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl border text-slate-600 dark:text-slate-400 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium"
                 >
                   取消
                 </button>
                 <button
+                  type="button"
                   onClick={handleJsonSubmit}
-                  className="px-5 py-2 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-md"
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20"
                 >
-                  解析并导入包
+                  <Upload className="w-4 h-4" />
+                  <span>确认导入 JSON</span>
                 </button>
               </div>
             </div>
