@@ -31,7 +31,6 @@ export type ReaderTheme = 'light' | 'sepia' | 'dark' | 'slate';
 export type ReaderFont = 'sans' | 'serif' | 'mono';
 export type FontSize = 'sm' | 'base' | 'lg' | 'xl' | '2xl';
 export type LineHeight = 'tight' | 'normal' | 'relaxed' | 'loose';
-export type ReaderViewMode = 'pdf' | 'text' | 'side-by-side';
 
 export interface ReaderSettings {
   fontSize: FontSize;
@@ -43,7 +42,6 @@ export interface ReaderSettings {
   showTimestamps: boolean;
   showTranslation: boolean;
   layout: 'split' | 'stacked';
-  viewMode: ReaderViewMode;
 }
 
 export interface Bookmark {

@@ -11,10 +11,8 @@ import {
   SlidersHorizontal,
   FileText,
   BookOpen,
-  Columns,
-  Layout,
 } from 'lucide-react';
-import { Track, ReaderSettings, ParagraphSegment, ReaderViewMode } from '../types';
+import { Track, ReaderSettings, ParagraphSegment } from '../types';
 import { formatTime } from '../utils/lrcParser';
 import { PdfViewer } from './PdfViewer';
 
@@ -48,20 +46,6 @@ export const TextReader: React.FC<TextReaderProps> = ({
   const [noteInput, setNoteInput] = useState('');
   const [copiedSegmentId, setCopiedSegmentId] = useState<string | null>(null);
 
-  // View mode: defaults to 'pdf' if track has pdfUrl, otherwise 'text'
-  const [viewMode, setViewMode] = useState<ReaderViewMode>(() => {
-    return track.pdfUrl ? 'pdf' : 'text';
-  });
-
-  // Switch default view mode when active track changes
-  useEffect(() => {
-    if (track.pdfUrl) {
-      setViewMode('pdf');
-    } else {
-      setViewMode('text');
-    }
-  }, [track.id, track.pdfUrl]);
-
   const containerRef = useRef<HTMLDivElement>(null);
   const activeSegmentRef = useRef<HTMLDivElement>(null);
 
@@ -75,15 +59,15 @@ export const TextReader: React.FC<TextReaderProps> = ({
   const activeSegment = track.segments[currentSegmentIndex] || null;
   const activeSegmentId = activeSegment ? activeSegment.id : null;
 
-  // Auto-scroll active segment into center view in text mode
+  // Auto-scroll active segment into center view when not using PDF viewer
   useEffect(() => {
-    if (viewMode !== 'pdf' && readerSettings.autoScroll && activeSegmentRef.current && containerRef.current) {
+    if (!track.pdfUrl && readerSettings.autoScroll && activeSegmentRef.current && containerRef.current) {
       activeSegmentRef.current.scrollIntoView({
         behavior: 'smooth',
         block: 'center',
       });
     }
-  }, [currentSegmentIndex, readerSettings.autoScroll, viewMode]);
+  }, [currentSegmentIndex, readerSettings.autoScroll, track.pdfUrl]);
 
   // Handle Copy Text
   const handleCopy = (text: string, segId: string) => {
@@ -369,49 +353,18 @@ export const TextReader: React.FC<TextReaderProps> = ({
     <div className={`flex flex-col h-full rounded-2xl border ${themeClass.bg} ${themeClass.border} shadow-sm overflow-hidden transition-colors duration-300`}>
       {/* Reader Control Header */}
       <div className={`flex items-center justify-between p-3 border-b ${themeClass.border} flex-wrap gap-2 bg-black/5 dark:bg-white/5`}>
-        {/* View Mode Selector Tabs (PDF Layout vs Pure Text vs Side-by-Side) */}
-        <div className="flex items-center gap-1 bg-slate-200/70 dark:bg-slate-800/80 p-1 rounded-xl text-xs">
-          {track.pdfUrl && (
-            <button
-              onClick={() => setViewMode('pdf')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
-                viewMode === 'pdf'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-700 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50'
-              }`}
-              title="展现 PDF 包含排版、图像、字体的原汁原味视觉效果"
-            >
+        {/* Title Badge */}
+        <div className="flex items-center gap-2">
+          {track.pdfUrl ? (
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-blue-600 text-white shadow-sm">
               <FileText className="w-3.5 h-3.5" />
               <span>📄 PDF 原貌排版</span>
-            </button>
-          )}
-
-          <button
-            onClick={() => setViewMode('text')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
-              viewMode === 'text'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-700 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50'
-            }`}
-            title="提取为可调字体、字号的无障碍纯文本流"
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>📝 纯文本重排</span>
-          </button>
-
-          {track.pdfUrl && (
-            <button
-              onClick={() => setViewMode('side-by-side')}
-              className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
-                viewMode === 'side-by-side'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-700 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50'
-              }`}
-              title="左侧 PDF 原貌，右侧可调重排文本"
-            >
-              <Columns className="w-3.5 h-3.5" />
-              <span>📖 双栏对照</span>
-            </button>
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-slate-700 text-white shadow-sm">
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>📝 文本跟读</span>
+            </span>
           )}
         </div>
 
@@ -459,9 +412,9 @@ export const TextReader: React.FC<TextReaderProps> = ({
         </div>
       </div>
 
-      {/* Main Display Area according to viewMode */}
+      {/* Main Display Area */}
       <div className="flex-1 overflow-hidden relative">
-        {viewMode === 'pdf' && track.pdfUrl ? (
+        {track.pdfUrl ? (
           <PdfViewer
             pdfUrl={track.pdfUrl}
             segments={track.segments}
@@ -470,27 +423,6 @@ export const TextReader: React.FC<TextReaderProps> = ({
             currentTime={currentTime}
             theme={readerSettings.theme}
           />
-        ) : viewMode === 'side-by-side' && track.pdfUrl ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 h-full divide-x divide-slate-200 dark:divide-slate-800">
-            <div className="h-full overflow-hidden">
-              <PdfViewer
-                pdfUrl={track.pdfUrl}
-                segments={track.segments}
-                activeSegmentId={activeSegmentId}
-                onSegmentClick={(id, time) => onSeek(time)}
-                currentTime={currentTime}
-                theme={readerSettings.theme}
-                showOverlayCards={false}
-              />
-            </div>
-            <div className="h-full flex flex-col overflow-hidden bg-white/50 dark:bg-slate-900/50">
-              <div className="p-2 border-b text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-800/80 flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5 text-blue-500" />
-                <span>可调字号重排流（双栏同步对照）</span>
-              </div>
-              {renderTextSegmentList()}
-            </div>
-          </div>
         ) : (
           renderTextSegmentList()
         )}
