@@ -10,11 +10,7 @@ import {
   Volume2,
   Download,
   Loader2,
-  Eye,
-  EyeOff,
-  BookOpen,
   FileText,
-  Sparkles,
 } from 'lucide-react';
 import { ParagraphSegment, ReaderTheme } from '../types';
 
@@ -28,7 +24,6 @@ interface PdfViewerProps {
   onSegmentClick: (segmentId: string, startTime: number) => void;
   currentTime: number;
   theme?: ReaderTheme;
-  showOverlayCards?: boolean;
 }
 
 export const PdfViewer: React.FC<PdfViewerProps> = ({
@@ -38,14 +33,12 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
   onSegmentClick,
   currentTime,
   theme = 'light',
-  showOverlayCards: initialShowOverlay = true,
 }) => {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.15);
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [showOverlay, setShowOverlay] = useState<boolean>(initialShowOverlay);
   const [renderedPages, setRenderedPages] = useState<Record<number, boolean>>({});
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -257,19 +250,6 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
 
         {/* Action toggles */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowOverlay(!showOverlay)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition border ${
-              showOverlay
-                ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950/50 dark:border-blue-800 dark:text-blue-300'
-                : 'bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400'
-            }`}
-            title="显示或隐藏朗读跟读覆盖层"
-          >
-            {showOverlay ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            <span>{showOverlay ? '已开启朗读同步标辉' : '隐藏跟读标辉'}</span>
-          </button>
-
           {pdfUrl && (
             <a
               href={pdfUrl}
@@ -298,16 +278,12 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
         {errorMsg && (
           <div className="max-w-md my-12 p-6 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-xl text-center text-red-600 dark:text-red-400 text-sm">
             <p className="font-semibold mb-2">{errorMsg}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              您可以尝试在顶部切换栏中选择“纯文本重排模式”进行无障碍朗读。
-            </p>
           </div>
         )}
 
         {!loading &&
           !errorMsg &&
           Array.from({ length: numPages }, (_, idx) => idx + 1).map((pageNum) => {
-            const pageSegments = segmentsByPage.get(pageNum) || [];
             const isCurrentPage = currentPage === pageNum;
 
             return (
@@ -339,70 +315,31 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
                   }}
                   className="block mx-auto rounded-sm"
                 />
-
-                {/* Audio Sync Interactive Segment Overlay */}
-                {showOverlay && pageSegments.length > 0 && (
-                  <div className="p-4 bg-slate-50/90 dark:bg-slate-900/95 border-t border-slate-200/80 dark:border-slate-800/80 backdrop-blur-sm space-y-2 rounded-b-sm">
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 px-1">
-                      <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                        <Sparkles className="w-3 h-3" />
-                        第 {pageNum} 页同步朗读段落 ({pageSegments.length})
-                      </span>
-                      <span>点击任意句子跳转朗读</span>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      {pageSegments.map((segment) => {
-                        const isActive = segment.id === activeSegmentId;
-
-                        return (
-                          <div
-                            key={segment.id}
-                            onClick={() => onSegmentClick(segment.id, segment.startTime)}
-                            className={`p-2.5 rounded-lg text-xs md:text-sm cursor-pointer transition-all duration-200 flex items-start gap-2.5 ${
-                              isActive
-                                ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400 scale-[1.01]'
-                                : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700/80 border border-slate-200/60 dark:border-slate-700/60'
-                            }`}
-                          >
-                            <button
-                              className={`p-1 rounded-full shrink-0 mt-0.5 ${
-                                isActive
-                                  ? 'bg-white/20 text-white'
-                                  : 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400'
-                              }`}
-                            >
-                              {isActive ? (
-                                <Volume2 className="w-3.5 h-3.5 animate-pulse" />
-                              ) : (
-                                <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                              )}
-                            </button>
-
-                            <div className="flex-1 space-y-1">
-                              <p className="leading-relaxed font-normal">{segment.text}</p>
-                              {segment.translation && (
-                                <p
-                                  className={`text-xs ${
-                                    isActive
-                                      ? 'text-blue-100'
-                                      : 'text-slate-500 dark:text-slate-400'
-                                  }`}
-                                >
-                                  {segment.translation}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })}
       </div>
+
+      {/* Floating Active Subtitle Banner for Audio Sync */}
+      {activeSegment && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 max-w-xl w-[90%] bg-slate-900/90 text-white backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-2xl border border-slate-700/60 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-3">
+          <div className="p-1.5 rounded-full bg-blue-600 shrink-0">
+            <Volume2 className="w-4 h-4 animate-pulse" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium truncate leading-snug">{activeSegment.text}</p>
+            {activeSegment.translation && (
+              <p className="text-[11px] text-blue-200/80 truncate font-light">{activeSegment.translation}</p>
+            )}
+          </div>
+          <button
+            onClick={() => onSegmentClick(activeSegment.id, activeSegment.startTime)}
+            className="text-[11px] font-semibold text-blue-300 hover:text-blue-100 shrink-0 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition"
+          >
+            跳至本句
+          </button>
+        </div>
+      )}
     </div>
   );
 };
